@@ -6,8 +6,7 @@ charset-normalizer==3.4.3
 click==8.3.0
 colorama==0.4.6
 cryptography==46.0.1
-elastic-transport==9.1.0
-elasticsearch==9.1.1
+psycopg2-binary==2.9.10
 Flask==3.1.2
 idna==3.10
 itsdangerous==2.2.0

@@ -8,7 +8,7 @@ from urllib.parse import urlparse, urlunparse
 from flask import Flask, render_template, request
 
 from crawler.crawler import crawl_and_download
-from elasticsearch_index.es_index import create_index, index_multiple, search_pdfs
+from postgres_index.db_index import create_index, index_multiple, search_pdfs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,13 +17,13 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "change-me")
 app.config["DOWNLOAD_DIR"] = Path(os.getenv("DOWNLOAD_DIR", "./downloaded_pdfs")).resolve()
 
-ES_AVAILABLE = False
+INDEX_AVAILABLE = False
 try:
     create_index()
 except RuntimeError as exc:
-    logger.warning("Elasticsearch unavailable at startup: %s", exc)
+    logger.warning("PostgreSQL unavailable at startup: %s", exc)
 else:
-    ES_AVAILABLE = True
+    INDEX_AVAILABLE = True
 
 
 def _initial_context() -> Dict[str, Any]:
@@ -111,7 +111,7 @@ def _format_downloaded_documents(documents: list) -> list:
 
 @app.post("/start_scraping")
 def start_scraping():
-    global ES_AVAILABLE
+    global INDEX_AVAILABLE
 
     website_url = request.form.get("url", "").strip()
     if not website_url:
@@ -149,20 +149,20 @@ def start_scraping():
     indexed_count = 0
 
     if documents:
-        if not ES_AVAILABLE:
+        if not INDEX_AVAILABLE:
             try:
                 create_index()
             except RuntimeError as exc:
                 indexing_error = f"Indexing skipped: {exc}"
             else:
-                ES_AVAILABLE = True
+                INDEX_AVAILABLE = True
 
-        if ES_AVAILABLE and indexing_error is None:
+        if INDEX_AVAILABLE and indexing_error is None:
             try:
                 indexed_count = index_multiple(downloaded_documents)
             except RuntimeError as exc:
                 indexing_error = str(exc)
-                ES_AVAILABLE = False
+                INDEX_AVAILABLE = False
 
     message = {
         "website_url": start_url,
@@ -186,26 +186,26 @@ def start_scraping():
 
 @app.route("/search", methods=["GET", "POST"])
 def search():
-    global ES_AVAILABLE
+    global INDEX_AVAILABLE
     query = request.values.get("query", "").strip()
     results = []
     error = None
 
     if query:
-        if not ES_AVAILABLE:
+        if not INDEX_AVAILABLE:
             try:
                 create_index()
             except RuntimeError as exc:
                 error = f"Search unavailable: {exc}"
             else:
-                ES_AVAILABLE = True
+                INDEX_AVAILABLE = True
 
         if error is None:
             try:
                 results = search_pdfs(query)
             except RuntimeError as exc:
                 error = f"Search unavailable: {exc}"
-                ES_AVAILABLE = False
+                INDEX_AVAILABLE = False
 
     return render_template("search_results.html", query=query, results=results, error=error)
 
