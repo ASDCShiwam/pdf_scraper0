@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}PDF Scraper - Crawl{% endblock %}
+
+{% block content %}
+<section class="card">
+    <h2>Start a Crawl</h2>
+    <p>Enter a starting URL and optional limits to keep the crawl focused on what matters.</p>
+    <form action="/start_scraping" method="POST" class="form-grid" data-loading>
+        <div class="form-group">
+            <label for="url">Website URL</label>
+            <input type="url" id="url" name="url" placeholder="https://example.com" required>
+        </div>
+        <div class="form-group">
+            <label for="max_pages">Maximum pages (optional)</label>
+            <input type="number" id="max_pages" name="max_pages" min="1" placeholder="e.g. 100">
+        </div>
+        <div class="form-group">
+            <label for="max_pdfs">Maximum PDFs (optional)</label>
+            <input type="number" id="max_pdfs" name="max_pdfs" min="1" placeholder="e.g. 50">
+        </div>
+        <button type="submit" class="primary">Start Scraping</button>
+    </form>
+
+    {% if error %}
+        <p class="alert alert-error">{{ error }}</p>
+    {% endif %}
+
+    {% if indexing_error %}
+        <p class="alert alert-warning">{{ indexing_error }}</p>
+    {% endif %}
+</section>
+
+{% if message %}
+<section class="card">
+    <h2>Latest Crawl Summary</h2>
+    <dl class="summary-list">
+        <div>
+            <dt>Website</dt>
+            <dd>{{ message.website_url }}</dd>
+        </div>
+        <div>
+            <dt>Pages limit</dt>
+            <dd>{{ message.max_pages if message.max_pages else 'No limit' }}</dd>
+        </div>
+        <div>
+            <dt>PDF limit</dt>
+            <dd>{{ message.max_pdfs if message.max_pdfs else 'No limit' }}</dd>
+        </div>
+        <div>
+            <dt>PDFs discovered</dt>
+            <dd>{{ message.downloaded }}</dd>
+        </div>
+        <div>
+            <dt>PDFs indexed</dt>
+            <dd>{{ message.indexed }}</dd>
+        </div>
+    </dl>
+</section>
+{% endif %}
+
+{% if documents %}
+<section class="card">
+    <h2>Downloaded PDFs</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Size (KB)</th>
+                    <th>Discovered on</th>
+                    <th>Downloaded at</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for doc in documents %}
+                <tr>
+                    <td>
+                        <a href="{{ doc.url }}" target="_blank" rel="noopener">{{ doc.filename }}</a>
+                    </td>
+                    <td>{% if doc.size_kb is not none %}{{ doc.size_kb }}{% else %}—{% endif %}</td>
+                    <td>
+                        {% if doc.source_page %}
+                            <a href="{{ doc.source_page }}" target="_blank" rel="noopener">Source page</a>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>{{ doc.downloaded_display or doc.downloaded_at }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<section class="card">
+    <h2>Search Indexed PDFs</h2>
+    <form action="/search" method="POST" class="form-inline" data-loading>
+        <label for="query" class="sr-only">Search query</label>
+        <input type="text" id="query" name="query" placeholder="Enter keyword to search PDFs">
+        <button type="submit">Search</button>
+    </form>
+    <p class="helper-text">Search uses the text extracted during indexing. Ensure Elasticsearch is running.</p>
+</section>
+{% endblock %}

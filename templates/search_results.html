@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Search PDFs{% endblock %}
+
+{% block content %}
+<section class="card">
+    <h2>Search PDFs</h2>
+    <form action="/search" method="POST" class="form-inline" data-loading>
+        <label for="query" class="sr-only">Search query</label>
+        <input type="text" id="query" name="query" value="{{ query }}" placeholder="Enter keyword">
+        <button type="submit">Search</button>
+    </form>
+
+    {% if error %}
+        <p class="alert alert-error">{{ error }}</p>
+    {% endif %}
+
+    {% if not query %}
+        <p class="helper-text">Provide a query to search within the indexed PDF content.</p>
+    {% elif results %}
+        <ul class="results-list">
+        {% for result in results %}
+            <li class="result-item">
+                <h3>
+                    <a href="{{ result['_source']['url'] }}" target="_blank" rel="noopener">
+                        {{ result['_source']['name'] }}
+                    </a>
+                </h3>
+                {% set highlight = result.get('highlight', {}).get('content', []) %}
+                {% if highlight %}
+                    <p class="snippet">{{ highlight[0]|safe }}</p>
+                {% else %}
+                    {% set snippet = result['_source']['content'][:200] %}
+                    <p class="snippet">{{ snippet }}{% if result['_source']['content']|length > 200 %}…{% endif %}</p>
+                {% endif %}
+                <dl class="result-meta">
+                    {% if result['_source'].get('source_page') %}
+                        <div>
+                            <dt>Discovered on</dt>
+                            <dd>
+                                <a href="{{ result['_source']['source_page'] }}" target="_blank" rel="noopener">
+                                    {{ result['_source']['source_page'] }}
+                                </a>
+                            </dd>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <dt>Indexed</dt>
+                        <dd>{{ result['_source']['downloaded_at'] }}</dd>
+                    </div>
+                </dl>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No results found for <strong>{{ query }}</strong>.</p>
+    {% endif %}
+</section>
+{% endblock %}
